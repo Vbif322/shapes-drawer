@@ -8,8 +8,8 @@ type Props = {
 };
 
 const CanvasProvider: FC<Props> = ({ children }) => {
-  const [tool, setTool] = useState<tool>("");
-  const [shape, setShape] = useState<shape>("");
+  const [tool, setTool] = useState<tool>();
+  const [shape, setShape] = useState<shape>("circle");
   return (
     <canvasCtx.Provider value={{ tool, setTool, shape, setShape }}>
       {children}

@@ -1,43 +1,48 @@
 import { FC, useContext, useState } from "react";
 import { Circle, Layer, Rect, Stage, Star } from "react-konva";
-import { figure, shape, tool } from "../../@types/types";
+import { figure, shape, temporaryFigure, tool } from "../../@types/types";
 import Konva from "konva";
 import { canvasCtx } from "../../context/CanvasProvider";
 
-const defaultAttrs = (shape: shape) => {
+/**
+ * Определение начальных параметров фигуры в зависимости от ее типа
+ * @param shape Тип фигуры
+ * @returns Начальные параметры для каждой из фигур
+ */
+const defaultAttrs = (shape: shape): figure => {
   switch (shape) {
-    case "circle":
-      return { radius: 5 };
     case "rect":
-      return { width: 5, height: 5 };
+      return { width: 5, height: 5, type: "rect", x: 0, y: 0 };
     case "star":
-      return { numPoints: 5 };
+      return {
+        numPoints: 5,
+        innerRadius: 5,
+        outerRadius: 10,
+        type: "star",
+        x: 0,
+        y: 0,
+      };
     default:
-      break;
+      return { radius: 5, type: "circle", x: 0, y: 0 };
   }
 };
 
-const renderFigure = (state: figure, i?: number, tool?: tool) => {
-  switch (state.type) {
-    case "circle":
-      return (
-        <Circle
-          key={i}
-          x={state.x}
-          y={state.y}
-          stroke="black"
-          radius={state.radius}
-          draggable={tool === "cursor"}
-        />
-      );
+/** Определяет JSX разметку в зависимости от типа фигуры
+ * @param figure Выбранная фигура
+ * @param i Порядковый номер в массиве фигур
+ * @param tool Выбранный инструмент
+ * @returns JSX разметку нужной фигуры
+ */
+const renderFigure = (figure: figure, i?: number, tool?: tool) => {
+  switch (figure.type) {
     case "rect":
       return (
         <Rect
           key={i}
-          x={state.x}
-          y={state.y}
-          width={state.width}
-          height={state.height}
+          x={figure.x}
+          y={figure.y}
+          width={figure.width}
+          height={figure.height}
           stroke="black"
           draggable={tool === "cursor"}
         />
@@ -46,17 +51,26 @@ const renderFigure = (state: figure, i?: number, tool?: tool) => {
       return (
         <Star
           key={i}
-          x={state.x}
-          y={state.y}
+          x={figure.x}
+          y={figure.y}
           numPoints={5}
-          innerRadius={state.innerRadius || 5}
-          outerRadius={state.outerRadius || 25}
+          innerRadius={figure.innerRadius || 5}
+          outerRadius={figure.outerRadius || 25}
           stroke="black"
           draggable={tool === "cursor"}
         />
       );
     default:
-      break;
+      return (
+        <Circle
+          key={i}
+          x={figure.x}
+          y={figure.y}
+          stroke="black"
+          radius={figure.radius}
+          draggable={tool === "cursor"}
+        />
+      );
   }
 };
 
@@ -68,13 +82,11 @@ const Canvas: FC = () => {
   const { tool, shape } = values;
 
   const [figures, setFigures] = useState<figure[]>([]);
-  const [state, setState] = useState<figure & { click: boolean }>({
+  const [tempFigure, setTempFigure] = useState<temporaryFigure>({
     click: false,
-    x: 0,
-    y: 0,
-    type: "",
   });
 
+  /** Обработчик нажатия мыши. Устанавливает временную фигуру с изменяемым размером */
   const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
     if (tool !== "shapes") return;
     const stage = e.target.getStage();
@@ -82,17 +94,17 @@ const Canvas: FC = () => {
     const stageOffset = stage.absolutePosition();
     const point = stage.getPointerPosition();
     if (point === null) return;
-    setState({
+    setTempFigure({
+      ...defaultAttrs(shape),
       click: true,
       x: point.x - stageOffset.x,
       y: point.y - stageOffset.y,
-      ...defaultAttrs(shape),
-      type: shape,
     });
   };
 
-  const handleMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (!state.click) return;
+  /** Обработчик движения мыши при нажатой ЛКМ. Меняет размер выбранной фигуры */
+  const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (!tempFigure.click) return;
     const stage = e.target.getStage();
     if (stage === null) return;
     const stageOffset = stage.absolutePosition();
@@ -100,49 +112,63 @@ const Canvas: FC = () => {
     if (point === null) return;
     switch (shape) {
       case "circle":
-        setState((prev) => ({
-          ...prev,
-          radius:
-            Math.sqrt(
-              Math.abs(point.x - prev.x - stageOffset.x) ** 2 +
-                Math.abs(point.y - prev.y - stageOffset.y) ** 2
-            ) + 5,
-        }));
+        setTempFigure((prev) => {
+          if (!("x" in prev)) return prev;
+          return {
+            ...prev,
+            radius:
+              Math.sqrt(
+                Math.abs(point.x - prev.x - stageOffset.x) ** 2 +
+                  Math.abs(point.y - prev.y - stageOffset.y) ** 2
+              ) + 5,
+          };
+        });
         break;
       case "rect":
-        setState((prev) => ({
-          ...prev,
-          width: point.x - prev.x - stageOffset.x + 5,
-          height: point.y - prev.y - stageOffset.y + 5,
-        }));
+        setTempFigure((prev) => {
+          if (!("x" in prev)) return prev;
+          return {
+            ...prev,
+            width: point.x - prev.x - stageOffset.x + 5,
+            height: point.y - prev.y - stageOffset.y + 5,
+          };
+        });
         break;
       case "star":
-        setState((prev) => ({
-          ...prev,
-          numPoints: 5,
-          innerRadius:
-            Math.sqrt(
-              Math.abs(point.x - prev.x - stageOffset.x) ** 2 +
-                Math.abs(point.y - prev.y - stageOffset.y) ** 2
-            ) + 5,
-          outerRadius:
-            (Math.sqrt(
-              Math.abs(point.x - prev.x - stageOffset.x) ** 2 +
-                Math.abs(point.y - prev.y - stageOffset.y) ** 2
-            ) +
-              10) *
-            2,
-        }));
+        setTempFigure((prev) => {
+          if (!("x" in prev)) return prev;
+          return {
+            ...prev,
+            numPoints: 5,
+            innerRadius:
+              Math.sqrt(
+                Math.abs(point.x - prev.x - stageOffset.x) ** 2 +
+                  Math.abs(point.y - prev.y - stageOffset.y) ** 2
+              ) + 5,
+            outerRadius:
+              (Math.sqrt(
+                Math.abs(point.x - prev.x - stageOffset.x) ** 2 +
+                  Math.abs(point.y - prev.y - stageOffset.y) ** 2
+              ) +
+                5) *
+              2,
+          };
+        });
         break;
       default:
         break;
     }
   };
 
+  /** Обработчик мыши, который срабатывает при отпускании ЛКМ. Добавляет временную фигуру в массив всех фигур */
   const handleMouseUp = () => {
-    setState({ click: false, x: 0, y: 0, type: "" });
-    const { click, ...figAttrs } = state;
-    setFigures((prev) => [...prev, figAttrs]);
+    setTempFigure({ click: false });
+    const { click, ...figAttrs } = tempFigure;
+    if ("x" in figAttrs) {
+      setFigures((prev) => {
+        return [...prev, figAttrs];
+      });
+    }
   };
 
   return (
@@ -151,10 +177,10 @@ const Canvas: FC = () => {
       height={window.innerHeight}
       draggable={tool !== "shapes"}
       onMouseDown={handleMouseDown}
-      onMouseMove={handleMove}
+      onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
     >
-      <Layer>{state.click && renderFigure(state)}</Layer>
+      <Layer>{tempFigure.click && renderFigure(tempFigure)}</Layer>
       <Layer>
         {figures.map((figure, i: number) => {
           return renderFigure(figure, i, tool);

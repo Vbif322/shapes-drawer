@@ -1,5 +1,5 @@
 import { FC, useContext } from "react";
-import s from "./style.module.scss";
+import styles from "./style.module.scss";
 import { Circle, MousePointer2, Shapes, Square, Star } from "lucide-react";
 import { shape, tool } from "../../@types/types";
 import { canvasCtx } from "../../context/CanvasProvider";
@@ -13,54 +13,54 @@ const Panel: FC = () => {
 
   const { tool, setTool, shape, setShape } = values;
 
+  /** Обработчик выбора инструмента */
   const handleClickTool = (tool: tool) => {
     setTool((prev) => {
       if (prev === tool) {
-        return "";
+        return undefined;
       } else return tool;
     });
   };
 
+  /** Обработчик выбора формы фигуры */
   const handleClickShape = (shape: shape) => {
-    setShape((prev) => {
-      if (prev === shape) {
-        return "";
-      } else return shape;
-    });
+    setShape(shape);
   };
 
   return (
-    <div className={s.container}>
+    <div className={styles.container}>
       <div
-        className={`${s.btn} ${tool === "shapes" ? s.active : ""}`}
+        className={`${styles.btn} ${tool === "shapes" ? styles.active : ""}`}
         onClick={() => handleClickTool("shapes")}
       >
         <Shapes />
       </div>
       <div
-        className={`${s.icons__container} ${tool === "shapes" ? s.active : ""}`}
+        className={`${styles.icons__container} ${
+          tool === "shapes" ? styles.active : ""
+        }`}
       >
         <div
-          className={`${s.btn} ${shape === "circle" ? s.active : ""}`}
+          className={`${styles.btn} ${shape === "circle" ? styles.active : ""}`}
           onClick={() => handleClickShape("circle")}
         >
           <Circle />
         </div>
         <div
-          className={`${s.btn} ${shape === "rect" ? s.active : ""}`}
+          className={`${styles.btn} ${shape === "rect" ? styles.active : ""}`}
           onClick={() => handleClickShape("rect")}
         >
           <Square />
         </div>
         <div
-          className={`${s.btn} ${shape === "star" ? s.active : ""}`}
+          className={`${styles.btn} ${shape === "star" ? styles.active : ""}`}
           onClick={() => handleClickShape("star")}
         >
           <Star />
         </div>
       </div>
       <div
-        className={`${s.btn} ${tool === "cursor" ? s.active : ""}`}
+        className={`${styles.btn} ${tool === "cursor" ? styles.active : ""}`}
         onClick={() => handleClickTool("cursor")}
       >
         <MousePointer2 />
